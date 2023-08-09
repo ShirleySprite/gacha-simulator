@@ -1,13 +1,16 @@
+from typing import Union, Dict, List
 from random import choices
 from enum import Enum
+from collections import Counter
 
+import numpy as np
 from tqdm import tqdm
 
 from .system import GachaSystem
+from .utils import counter_contain
 
 
 class ExperimentMode(Enum):
-    RAW = ('raw record', 0)
     SSR_CNT = ('record SSR count', 1)
     SAMPLE_MEAN = ('record sample mean', 2)
     EMPIRICAL_PROB = ('record empirical probability', 3)
@@ -34,64 +37,102 @@ class GachaSimulator:
 
     def __init__(
             self,
-    ):
-        self.gacha_system = None
-
-    def __repr__(
-            self
-    ):
-        pass
-
-    def apply_system(
-            self,
             gacha_system: GachaSystem
     ):
         self.gacha_system = gacha_system
 
-    def multi_choice(
+    def __repr__(
+            self
+    ):
+        return f"{self.__class__.__name__}(gacha_system={repr(self.gacha_system)})"
+
+    def __str__(
+            self
+    ):
+
+        return f"The {self.__class__.__name__} for {self.gacha_system.meta.name}"
+
+    def multi_choices(
             self,
             times
     ):
-        ssr_rec = []
         cur_cnt = 0
-        prob_table = self.gacha_system.prob_table
-        values = prob_table.values
-        card_pool = prob_table.columns
+        drop_cols = 2
+        reg_values = self.gacha_system.prob_table.regular_table.values[:, :-drop_cols]
+        maj_values = None
+        if self.gacha_system.meta.major_pity:
+            maj_values = self.gacha_system.prob_table.major_pity_table.values[:, :-drop_cols]
+        card_pool = self.gacha_system.prob_table.regular_table.columns[:-drop_cols]
+        values = reg_values
         for _ in range(times):
             weight = values[cur_cnt]
             result = choices(card_pool, weight)[0]
             cur_cnt += 1
 
-            major_pity_round = self.gacha_system.meta.major_pity_round
             cur_up = self.gacha_system.meta.up_list[0]
             if result != 'no_ssr':
-                # is major pity?
-                if major_pity_round is not None:
-                    latest_rec = [x[1] for x in ssr_rec[-major_pity_round + 1:]]
-                    if cur_up not in latest_rec:
-                        result = cur_up
+                # major pity system
+                if self.gacha_system.meta.major_pity:
+                    if result != cur_up:
+                        values = maj_values
+                    else:
+                        values = reg_values
 
-                ssr_rec.append((cur_cnt, result))
+                yield cur_cnt, result
                 cur_cnt = 0
 
-        return ssr_rec
-
-    def multi_experiment(
+    def multi_experiments(
             self,
             mode: ExperimentMode,
             total_round: int,
             single_experiment: int = 10000
     ):
+        regular_methods = {
+            ExperimentMode.SSR_CNT: lambda n_attempts, record: len(record),
+            ExperimentMode.SAMPLE_MEAN: lambda n_attempts, record: n_attempts / len(record),
+            ExperimentMode.EMPIRICAL_PROB: lambda n_attempts, record: len(record) / n_attempts,
+        }
+
         rec = []
         for _ in tqdm(range(total_round)):
-            single_result = self.multi_choice(single_experiment)
-            if mode == ExperimentMode.RAW:
-                rec.append(single_result)
-            elif mode == ExperimentMode.SSR_CNT:
-                rec.append(len(single_result))
-            elif mode == ExperimentMode.SAMPLE_MEAN:
-                rec.append(single_experiment / len(single_result))
-            elif mode == ExperimentMode.EMPIRICAL_PROB:
-                rec.append(len(single_result) / single_experiment)
+            single_result = list(self.multi_choices(single_experiment))
+            rec.append(
+                regular_methods[mode](single_experiment, single_result)
+            )
 
         return rec
+
+    def simulate_by_attempts(
+            self,
+            n_attempts: int,
+            targets: Union[Dict, List],
+            total_round: int,
+    ):
+        target_cnt = Counter(targets)
+        result = []
+        for _ in tqdm(range(total_round)):
+            ssr_rec = self.multi_choices(n_attempts)
+            rec_cnt = Counter([x[1] for x in ssr_rec])
+            result.append(counter_contain(rec_cnt, target_cnt))
+
+        return result
+
+    def simulate_by_targets(
+            self,
+            targets: Union[Dict, List],
+            total_round: int,
+    ):
+        target_cnt = Counter(targets)
+        result = []
+        for _ in tqdm(range(total_round)):
+            cur_cnt = Counter()
+            ssr_rec = self.multi_choices(10 ** 8)
+            i = 0
+            for n_attempts, ssr_item in ssr_rec:
+                i += n_attempts
+                cur_cnt[ssr_item] += 1
+                if counter_contain(cur_cnt, target_cnt):
+                    ssr_rec.close()
+            result.append(i)
+
+        return result

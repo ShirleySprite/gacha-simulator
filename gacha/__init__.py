@@ -1,2 +1,2 @@
-# from gacha_simulator.similator import GachaSimulator
-# from gacha_simulator.system import GachaSystem
+from gacha.simulator import GachaSimulator, ExperimentMode
+from gacha.system import GachaSystem
