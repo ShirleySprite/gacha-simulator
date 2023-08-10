@@ -1,8 +1,10 @@
 import math
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import pandas as pd
+
+from .utils import combination
 
 
 @dataclass
@@ -13,7 +15,8 @@ class GachaMeta:
     up_list: Optional[List]
     prob_increase: Optional[float]
     pity_cnt: Optional[int]
-    major_pity: bool
+    major_pity: Union[bool, int]
+    refresh: bool
     name: str
 
 
@@ -40,7 +43,8 @@ class GachaSystem:
             up_list: Optional[List],
             prob_increase: Optional[float],
             pity_cnt: Optional[int],
-            major_pity: bool = False,
+            major_pity: Union[bool, int] = False,
+            refresh: bool = True,
             name: str = 'unknown game'
     ):
         """
@@ -60,12 +64,17 @@ class GachaSystem:
             The increase in probability each time the gacha is attempted after reaching `base_cnt`.
         pity_cnt : Optional[int]
             The number of gacha attempts needed to trigger the pity system.
-        major_pity : bool, default `False`
-            Determines whether the gacha system includes a major pity mechanic.
-            Consider this parameter only when the major pity affects gacha probabilities.
-            The exchange system is not considered a major pity system.
-            - Set to `True` for a single-rate-up item pool.
+        major_pity : Union[bool, int], default `False`
+            Specifies the presence and mode of the major pity mechanic in the gacha system.
+            Note that the exchange system is not considered a part of the major pity system.
             - Set to `False` for a multi-rate-ups item pool.
+            - Set to `True` for a single-rate-up item pool.
+              The probabilities undergo a complete change after obtaining a non-rate-up SSR item.
+            - Pass an `int` to enforce obtaining the desired item when the number of attempts reaches this value,
+              without altering any probabilities beforehand.
+        refresh: bool
+            Refresh the item pool immediately after obtaining an SSR item?
+            For most games, this setting is `True`.
         name : Optional[str]
             The name of your mobile game.
         """
@@ -77,6 +86,7 @@ class GachaSystem:
             prob_increase,
             pity_cnt,
             major_pity,
+            refresh,
             name
         )
         self._adjust()
@@ -129,7 +139,8 @@ class GachaSystem:
             meta.base_prob + max(0, i - meta.base_cnt) * meta.prob_increase
             for i in range(1, meta.pity_cnt + 1)
         ]
-        result[-1] = 1
+        if meta.refresh:
+            result[-1] = 1
 
         # n-gacha prob
         n_up = len(meta.up_list)
@@ -153,7 +164,7 @@ class GachaSystem:
         regular_df.index += 1
         regular_df['ssr_n_gacha'] = ssr_n_gacha
 
-        if meta.major_pity:
+        if type(meta.major_pity) == bool and meta.major_pity:
             major_pity_df = regular_df.copy()
             major_pity_df[card_pool] = [
                 self._split_weights(
@@ -168,9 +179,32 @@ class GachaSystem:
 
         return ProbTable(regular_df, major_pity_df)
 
-    def _cal_expectation(
+    def _cal_refresh_expectation(
             self
     ):
         regular_df = self.prob_table.regular_table
 
         return sum(regular_df.index * regular_df['ssr_n_gacha'])
+
+    def _cal_not_refresh_expectation(
+            self
+    ):
+        ssr = self.meta.base_prob
+        no_ssr = 1 - ssr
+        n = self.meta.pity_cnt
+        expectation = 0
+        for i in range(n + 1):
+            cur = combination(n, i) * (no_ssr ** (n - i)) * (ssr ** i)
+            if i == 0:
+                i = 1
+            expectation += i * cur
+
+        return n / expectation
+
+    def _cal_expectation(
+            self
+    ):
+        if self.meta.refresh:
+            return self._cal_refresh_expectation()
+        else:
+            return self._cal_not_refresh_expectation()
