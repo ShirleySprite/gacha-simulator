@@ -1,23 +1,11 @@
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import Optional
 
 import pandas as pd
 
 from .utils import combination
-
-
-@dataclass
-class GachaMeta:
-    base_prob: float
-    base_cnt: int
-    up_percent: float
-    up_list: Optional[List]
-    prob_increase: Optional[float]
-    pity_cnt: Optional[int]
-    major_pity: Union[bool, int]
-    refresh: bool
-    name: str
+from .meta import GachaMeta
 
 
 @dataclass
@@ -37,59 +25,9 @@ class ProbTable:
 class GachaSystem:
     def __init__(
             self,
-            base_prob: float,
-            base_cnt: int,
-            up_percent: float,
-            up_list: Optional[List],
-            prob_increase: Optional[float],
-            pity_cnt: Optional[int],
-            major_pity: Union[bool, int] = False,
-            refresh: bool = True,
-            name: str = 'unknown game'
+            meta: GachaMeta
     ):
-        """
-        Represents a gacha system of a specific mobile games.
-
-        Parameters
-        ----------
-        base_prob : float
-            The base probability of obtaining an SSR item.
-        base_cnt : int
-            The number of initial gacha attempts before the probability starts to increase.
-        up_percent : float
-            The percentage of rate-up items among all SSR items.
-        up_list : Optional[List]
-            List of rate-up items. Use `None` for no rate-up items, resulting in a regular item pool.
-        prob_increase : Optional[float]
-            The increase in probability each time the gacha is attempted after reaching `base_cnt`.
-        pity_cnt : Optional[int]
-            The number of gacha attempts needed to trigger the pity system.
-        major_pity : Union[bool, int], default `False`
-            Specifies the presence and mode of the major pity mechanic in the gacha system.
-            Note that the exchange system is not considered a part of the major pity system.
-            - Set to `False` for a multi-rate-ups item pool.
-            - Set to `True` for a single-rate-up item pool.
-              The probabilities undergo a complete change after obtaining a non-rate-up SSR item.
-            - Pass an `int` to enforce obtaining the desired item when the number of attempts reaches this value,
-              without altering any probabilities beforehand.
-        refresh: bool
-            Refresh the item pool immediately after obtaining an SSR item?
-            For most games, this setting is `True`.
-        name : Optional[str]
-            The name of your mobile game.
-        """
-        self.meta = GachaMeta(
-            base_prob,
-            base_cnt,
-            up_percent,
-            up_list,
-            prob_increase,
-            pity_cnt,
-            major_pity,
-            refresh,
-            name
-        )
-        self._adjust()
+        self.meta = meta
         self.prob_table = self._gen_prob_table()
         self.expectation = self._cal_expectation()
         self.theoretical_prob = 1 / self.expectation
@@ -97,7 +35,7 @@ class GachaSystem:
     def __repr__(
             self
     ):
-        return repr(self.meta).replace('GachaMeta', self.__class__.__name__)
+        return f"{self.__class__.__name__}(meta={repr(self.meta)})"
 
     def __str__(
             self
@@ -105,16 +43,6 @@ class GachaSystem:
         return f"The {self.__class__.__name__} for {self.meta.name}, " \
                f"expectation={self.expectation:.1f}, " \
                f"theoretical_prob={100 * self.theoretical_prob:.2f}%"
-
-    def _adjust(
-            self
-    ):
-        if self.meta.up_list is None:
-            self.meta.up_list = []
-        if self.meta.prob_increase is None:
-            self.meta.prob_increase = 0
-        if self.meta.pity_cnt is None:
-            self.meta.pity_cnt = self.meta.base_cnt + math.ceil((1 - self.meta.base_prob) / self.meta.prob_increase)
 
     @staticmethod
     def _split_weights(
@@ -135,10 +63,7 @@ class GachaSystem:
     ):
         # ssr probability
         meta = self.meta
-        result = [
-            meta.base_prob + max(0, i - meta.base_cnt) * meta.prob_increase
-            for i in range(1, meta.pity_cnt + 1)
-        ]
+        result = meta.prob_list
         if meta.refresh:
             result[-1] = 1
 
