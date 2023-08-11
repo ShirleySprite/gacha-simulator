@@ -129,12 +129,22 @@ class GachaSimulator:
     def __repr__(
             self
     ):
-        return f"{self.__class__.__name__}(gacha_system={repr(self.gacha_system)})"
+        if self.gacha_system is None:
+            meta = self._meta
+        else:
+            meta = self.gacha_system.meta
+
+        return f"{self.__class__.__name__}{repr(meta).replace(meta.__class__.__name__, '')}"
 
     def __str__(
             self
     ):
-        return f"The {self.__class__.__name__} for {self.gacha_system.meta.name}"
+        if self.gacha_system is None:
+            name = self._meta.name
+        else:
+            name = self.gacha_system.meta.name
+
+        return f"The {self.__class__.__name__} for {name}"
 
     def _check(self):
         meta = self._meta
@@ -241,7 +251,7 @@ class GachaSimulator:
         -------
         None
         """
-        if not self.gacha_system:
+        if not isinstance(self.gacha_system, GachaSystem):
             self.gacha_system = GachaSystem(self._meta)
             del self._meta
 
