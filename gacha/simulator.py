@@ -257,7 +257,9 @@ class GachaSimulator:
 
     def _multi_attempts_normal(
             self,
-            n_attempts: int
+            n_attempts: int,
+            start: int,
+            major_pity_start: bool
     ):
         """
         For most normal games.
@@ -271,10 +273,10 @@ class GachaSimulator:
         if mp:
             maj_values = self.gacha_system.prob_table.major_pity_table.values[:, :-drop_cols]
         item_pool = self.gacha_system.prob_table.regular_table.columns[:-drop_cols]
-        values = reg_values
+        values = maj_values if major_pity_start else reg_values
 
         # helper variables
-        cur_cnt = 0
+        cur_cnt = start
         for _ in range(n_attempts):
             # attempt once
             weight = values[cur_cnt]
@@ -299,7 +301,8 @@ class GachaSimulator:
 
     def _multi_attempts_not_refresh(
             self,
-            n_attempts: int
+            n_attempts: int,
+            start: int
     ):
         """
         For games that do not reset the pity system upon obtaining an SSR item,
@@ -313,7 +316,7 @@ class GachaSimulator:
         weight = self.gacha_system.prob_table.regular_table.iloc[0][:-drop_cols].tolist()
 
         # helper variables, remain `cur_cnt` var for record purpose
-        cur_cnt = 0
+        cur_cnt = start
         get_ssr = False
         for total_cnt in range(1, n_attempts + 1):
             if total_cnt % pity_cnt == 1:
@@ -338,7 +341,9 @@ class GachaSimulator:
 
     def _multi_attempts_specific_major_pity(
             self,
-            n_attempts
+            n_attempts,
+            start,
+            major_pity_start
     ):
         """
         For games that guarantee obtaining the rate-up SSR when the count reaches a specific number
@@ -352,8 +357,8 @@ class GachaSimulator:
         item_pool = self.gacha_system.prob_table.regular_table.columns[:-drop_cols]
 
         # helper variables
-        cur_cnt = 0
-        maj_cnt = 0
+        cur_cnt = start
+        maj_cnt = major_pity_start
         for _ in range(n_attempts):
             # attempt once
             weight = values[cur_cnt]
@@ -380,8 +385,11 @@ class GachaSimulator:
 
     def multi_attempts(
             self,
-            n_attempts: int
+            n_attempts: int,
+            start: int = 0,
+            major_pity_start: Union[bool, int] = False
     ) -> Generator[Tuple, None, None]:
+
         """
         Function for performing multiple gacha attempts, returning the result of each attempt as a generator.
 
@@ -389,6 +397,12 @@ class GachaSimulator:
         ----------
         n_attempts : int
             Number of attempts to perform.
+        start : int
+            The starting point of the attempt, indicating at which draw it is located in the current item pool.
+        major_pity_start: Union[bool, int], default `False`
+            If `True`/`False`, it represents whether the major pity is approaching.
+            If it is an `int`, it indicates that the major pity system is at the N-th guarantee,
+            and the `major_pity_start` draws have already been completed.
 
         Yields
         -------
@@ -397,17 +411,32 @@ class GachaSimulator:
         """
         meta = self.gacha_system.meta
         if meta.refresh and type(meta.major_pity) == bool:
-            return self._multi_attempts_normal(n_attempts)
+            return self._multi_attempts_normal(
+                n_attempts=n_attempts,
+                start=start,
+                major_pity_start=major_pity_start
+            )
+
         elif not meta.refresh:
-            return self._multi_attempts_not_refresh(n_attempts)
+            return self._multi_attempts_not_refresh(
+                n_attempts=n_attempts,
+                start=start
+            )
+
         elif meta.refresh and type(meta.major_pity) == int:
-            return self._multi_attempts_specific_major_pity(n_attempts)
+            return self._multi_attempts_specific_major_pity(
+                n_attempts=n_attempts,
+                start=start,
+                major_pity_start=int(major_pity_start)
+            )
 
     def multi_experiments(
             self,
             mode: ExperimentMode,
-            total_round: int,
-            n_attempts: int = 10000
+            n_attempts: int = 10000,
+            start: int = 0,
+            major_pity_start: Union[bool, int] = False,
+            total_round: int = 10000
     ) -> List:
         """
         Conveniently perform multiple sets of experiments, each involving multiple attempts.
@@ -417,10 +446,16 @@ class GachaSimulator:
         ----------
         mode : ExperimentMode
             Desired type of experimental results.
-        total_round : int
-            Total number of experiment rounds.
         n_attempts : int, default `10000`
             Number of attempts per single experiment, default is `10000`.
+        start : int
+            The starting point of the attempt, indicating at which draw it is located in the current item pool.
+        major_pity_start: Union[bool, int], default `False`
+            If `True`/`False`, it represents whether the major pity is approaching.
+            If it is an `int`, it indicates that the major pity system is at the N-th guarantee,
+            and the `major_pity_start` draws have already been completed.
+        total_round : int
+            Total number of experiment rounds.
 
         Returns
         -------
@@ -435,7 +470,13 @@ class GachaSimulator:
 
         rec = []
         for _ in tqdm(range(total_round)):
-            single_result = list(self.multi_attempts(n_attempts))
+            single_result = list(
+                self.multi_attempts(
+                    n_attempts=n_attempts,
+                    start=start,
+                    major_pity_start=major_pity_start
+                )
+            )
             rec.append(
                 regular_methods[mode](n_attempts, single_result)
             )
@@ -446,7 +487,9 @@ class GachaSimulator:
             self,
             n_attempts: int,
             targets: Union[Dict, List],
-            total_round: int,
+            start: int = 0,
+            major_pity_start: Union[bool, int] = False,
+            total_round: int = 10000
     ) -> Generator[bool, None, None]:
         """
         Perform multiple simulations with given gacha attempts and SSR targets,
@@ -459,6 +502,12 @@ class GachaSimulator:
             Usually depending on your plan.
         targets : Union[Dict, List]
             The desired SSR targets. Can be in dictionary or list format.
+        start : int
+            The starting point of the attempt, indicating at which draw it is located in the current item pool.
+        major_pity_start: Union[bool, int], default `False`
+            If `True`/`False`, it represents whether the major pity is approaching.
+            If it is an `int`, it indicates that the major pity system is at the N-th guarantee,
+            and the `major_pity_start` draws have already been completed.
         total_round : int
             The total number of simulation rounds.
 
@@ -470,14 +519,21 @@ class GachaSimulator:
         """
         target_cnt = Counter(targets)
         for _ in tqdm(range(total_round)):
-            ssr_rec = self.multi_attempts(n_attempts)
+            ssr_rec = self.multi_attempts(
+                n_attempts,
+                start=start,
+                major_pity_start=major_pity_start
+            )
             rec_cnt = Counter([x[1] for x in ssr_rec])
+
             yield counter_contain(rec_cnt, target_cnt)
 
     def simulate_by_targets(
             self,
             targets: Union[Dict, List],
-            total_round: int,
+            start: int = 0,
+            major_pity_start: Union[bool, int] = False,
+            total_round: int = 10000
     ) -> Generator[int, None, None]:
         """
         Perform multiple simulations to achieve SSR targets and yield the number of gacha attempts needed,
@@ -487,6 +543,12 @@ class GachaSimulator:
         ----------
         targets : Union[Dict, List]
             The desired SSR targets. Can be in dictionary or list format.
+        start : int
+            The starting point of the attempt, indicating at which draw it is located in the current item pool.
+        major_pity_start: Union[bool, int], default `False`
+            If `True`/`False`, it represents whether the major pity is approaching.
+            If it is an `int`, it indicates that the major pity system is at the N-th guarantee,
+            and the `major_pity_start` draws have already been completed.
         total_round : int
             The total number of simulation rounds.
 
@@ -498,11 +560,61 @@ class GachaSimulator:
         target_cnt = Counter(targets)
         for _ in tqdm(range(total_round)):
             cur_cnt = Counter()
-            ssr_rec = self.multi_attempts(10 ** 8)
-            i = 0
+            ssr_rec = self.multi_attempts(
+                10 ** 8,
+                start=start,
+                major_pity_start=major_pity_start
+            )
+            i = -start
             for n_attempts, ssr_item in ssr_rec:
                 i += n_attempts
                 cur_cnt[ssr_item] += 1
                 if counter_contain(cur_cnt, target_cnt):
                     ssr_rec.close()
+
             yield i
+
+    def exceed_percent(
+            self,
+            targets: Union[Dict, List],
+            n_attempts: int,
+            start: int,
+            major_pity_start: Union[bool, int] = False,
+            total_round: int = 10000
+    ) -> float:
+        """
+        Analyze the gacha results and return the percentage of people exceeded in decimal form.
+
+        Parameters
+        ----------
+        targets : Union[Dict, List]
+            The desired SSR targets. Can be in dictionary or list format.
+        n_attempts : int
+            The total number of attempts made.
+        start : int
+            The starting point of the attempt, indicating at which draw it is located in the current item pool.
+        major_pity_start: Union[bool, int], default `False`
+            If `True`/`False`, it represents whether the major pity is approaching.
+            If it is an `int`, it indicates that the major pity system is at the N-th guarantee,
+            and the `major_pity_start` draws have already been completed.
+        total_round : int
+            The total number of simulation rounds.
+
+        Returns
+        -------
+        float
+            The percentage of people exceeded.
+        """
+        result = self.simulate_by_targets(
+            targets=targets,
+            start=start,
+            major_pity_start=major_pity_start,
+            total_round=total_round
+        )
+
+        n_exceed = 0
+        for x in result:
+            if x >= n_attempts:
+                n_exceed += 1
+
+        return n_exceed / total_round
