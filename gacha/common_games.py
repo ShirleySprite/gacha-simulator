@@ -8,6 +8,8 @@ class Games(Enum):
     ARKNIGHTS = 4
     HONKAI_IMPACT_2_HIME = 5
     HONKAI_IMPACT_2_MAJO = 6
+    THRUD_CHARACTER = 7
+    THRUD_WEAPON = 8
 
     @property
     def gacha_data(
@@ -91,6 +93,30 @@ def _g_sys(
             'major_pity': False,
             'refresh': False,
             'name': 'Honkai Impact 2 Hime'
+        },
+        7: {
+            'base_prob': 0.0085,
+            'base_cnt': 80,
+            'up_percent': 0.5,
+            'up_list': ['A'],
+            'prob_increase': 0,
+            'pity_cnt': 80,
+            'official_prob': 0.018,
+            'major_pity': True,
+            'refresh': True,
+            'name': 'Thrud Character'
+        },
+        8: {
+            'base_prob': 0.01,
+            'base_cnt': 50,
+            'up_percent': 1,
+            'up_list': ['A'],
+            'prob_increase': 0,
+            'pity_cnt': 50,
+            'official_prob': 0.025,
+            'major_pity': True,
+            'refresh': True,
+            'name': 'Thrud Weapon'
         }
     }
 
