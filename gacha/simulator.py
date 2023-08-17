@@ -160,10 +160,10 @@ class GachaSimulator:
         if not (0 < meta.base_prob < 1):
             raise SystemBuildError("invalid `base_prob`")
 
-        if not (0 < meta.up_percent < 1):
+        if not (0 < meta.up_percent <= 1):
             raise SystemBuildError("invalid `up_percent`")
 
-        if not (0 < meta.prob_increase < 1):
+        if not (0 <= meta.prob_increase < 1):
             raise SystemBuildError("invalid `prob_increase`")
 
         if meta.base_cnt > meta.pity_cnt:
