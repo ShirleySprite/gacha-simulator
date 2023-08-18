@@ -222,12 +222,16 @@ class GachaSimulator:
             prob_list = prob_list[:meta.base_cnt]
             cum_exp = 0
             cum_prob = base_cum_prob
-            for j in range(meta.base_cnt + 1, meta.pity_cnt + 1):
+            for j in range(meta.base_cnt + 1, meta.pity_cnt):
                 increase_func = mode_dict.get(prob_increase_mode, prob_increase_mode)
                 prob = min(1, increase_func(base_prob, j - meta.base_cnt, estimate))
+                prob = max(0, prob)
                 prob_list.append(prob)
                 cum_exp += j * cum_prob * prob
                 cum_prob *= 1 - prob
+
+            # pity
+            cum_exp += meta.pity_cnt * cum_prob
 
             diff = round(meta.official_prob - (1 / (base_cum_exp + cum_exp)), 4)
             if diff > 0:
