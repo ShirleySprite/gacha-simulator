@@ -27,7 +27,7 @@ class GachaMeta:
         if self.pity_cnt is None:
             self.pity_cnt = self.base_cnt + math.ceil((1 - self.base_prob) / self.prob_increase)
 
-        if self.prob_increase:
+        if type(self.prob_increase) in [int, float]:
             self.prob_list = [
                 self.base_prob + max(0, i - self.base_cnt) * self.prob_increase
                 for i in range(1, self.pity_cnt + 1)

@@ -160,10 +160,10 @@ class GachaSimulator:
         if not (0 < meta.base_prob < 1):
             raise SystemBuildError("invalid `base_prob`")
 
-        if not (0 < meta.up_percent < 1):
+        if not (0 < meta.up_percent <= 1):
             raise SystemBuildError("invalid `up_percent`")
 
-        if not (0 < meta.prob_increase < 1):
+        if not (0 <= meta.prob_increase < 1):
             raise SystemBuildError("invalid `prob_increase`")
 
         if meta.base_cnt > meta.pity_cnt:
@@ -222,12 +222,16 @@ class GachaSimulator:
             prob_list = prob_list[:meta.base_cnt]
             cum_exp = 0
             cum_prob = base_cum_prob
-            for j in range(meta.base_cnt + 1, meta.pity_cnt + 1):
+            for j in range(meta.base_cnt + 1, meta.pity_cnt):
                 increase_func = mode_dict.get(prob_increase_mode, prob_increase_mode)
                 prob = min(1, increase_func(base_prob, j - meta.base_cnt, estimate))
+                prob = max(0, prob)
                 prob_list.append(prob)
                 cum_exp += j * cum_prob * prob
                 cum_prob *= 1 - prob
+
+            # pity
+            cum_exp += meta.pity_cnt * cum_prob
 
             diff = round(meta.official_prob - (1 / (base_cum_exp + cum_exp)), 4)
             if diff > 0:
@@ -573,48 +577,3 @@ class GachaSimulator:
                     ssr_rec.close()
 
             yield i
-
-    def exceed_percent(
-            self,
-            targets: Union[Dict, List],
-            n_attempts: int,
-            start: int,
-            major_pity_start: Union[bool, int] = False,
-            total_round: int = 10000
-    ) -> float:
-        """
-        Analyze the gacha results and return the percentage of people exceeded in decimal form.
-
-        Parameters
-        ----------
-        targets : Union[Dict, List]
-            The desired SSR targets. Can be in dictionary or list format.
-        n_attempts : int
-            The total number of attempts made.
-        start : int
-            The starting point of the attempt, indicating at which draw it is located in the current item pool.
-        major_pity_start: Union[bool, int], default `False`
-            If `True`/`False`, it represents whether the major pity is approaching.
-            If it is an `int`, it indicates that the major pity system is at the N-th guarantee,
-            and the `major_pity_start` draws have already been completed.
-        total_round : int
-            The total number of simulation rounds.
-
-        Returns
-        -------
-        float
-            The percentage of people exceeded.
-        """
-        result = self.simulate_by_targets(
-            targets=targets,
-            start=start,
-            major_pity_start=major_pity_start,
-            total_round=total_round
-        )
-
-        n_exceed = 0
-        for x in result:
-            if x >= n_attempts:
-                n_exceed += 1
-
-        return n_exceed / total_round
