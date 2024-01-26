@@ -440,7 +440,8 @@ class GachaSimulator:
             n_attempts: int = 10000,
             start: int = 0,
             major_pity_start: Union[bool, int] = False,
-            total_round: int = 10000
+            total_round: int = 10000,
+            verbose: bool = True
     ) -> List:
         """
         Conveniently perform multiple sets of experiments, each involving multiple attempts.
@@ -473,7 +474,10 @@ class GachaSimulator:
         }
 
         rec = []
-        for _ in tqdm(range(total_round)):
+        rng = range(total_round)
+        if verbose:
+            rng = tqdm(rng)
+        for _ in rng:
             single_result = list(
                 self.multi_attempts(
                     n_attempts=n_attempts,
@@ -493,7 +497,8 @@ class GachaSimulator:
             targets: Union[Dict, List],
             start: int = 0,
             major_pity_start: Union[bool, int] = False,
-            total_round: int = 10000
+            total_round: int = 10000,
+            verbose: bool = True
     ) -> Generator[bool, None, None]:
         """
         Perform multiple simulations with given gacha attempts and SSR targets,
@@ -522,7 +527,10 @@ class GachaSimulator:
             representing whether the targets are achieved or not.
         """
         target_cnt = Counter(targets)
-        for _ in tqdm(range(total_round)):
+        rng = range(total_round)
+        if verbose:
+            rng = tqdm(rng)
+        for _ in rng:
             ssr_rec = self.multi_attempts(
                 n_attempts,
                 start=start,
@@ -537,7 +545,8 @@ class GachaSimulator:
             targets: Union[Dict, List],
             start: int = 0,
             major_pity_start: Union[bool, int] = False,
-            total_round: int = 10000
+            total_round: int = 10000,
+            verbose: bool = True
     ) -> Generator[int, None, None]:
         """
         Perform multiple simulations to achieve SSR targets and yield the number of gacha attempts needed,
@@ -562,7 +571,10 @@ class GachaSimulator:
             The number of gacha attempts needed to achieve the targets for each simulation round.
         """
         target_cnt = Counter(targets)
-        for _ in tqdm(range(total_round)):
+        rng = range(total_round)
+        if verbose:
+            rng = tqdm(rng)
+        for _ in rng:
             cur_cnt = Counter()
             ssr_rec = self.multi_attempts(
                 10 ** 8,
