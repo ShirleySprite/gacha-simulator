@@ -11,6 +11,7 @@ class Games(Enum):
     THRUD_CHARACTER = 7
     THRUD_WEAPON = 8
     GENSHIN = 9
+    DEEPSPACE = 10
 
     @property
     def gacha_data(
@@ -130,6 +131,18 @@ def _g_sys(
             'major_pity': True,
             'refresh': True,
             'name': 'Genshin Impact'
+        },
+        10: {
+            'base_prob': 0.01,
+            'base_cnt': 60,
+            'up_percent': 0.5,
+            'up_list': ['A'],
+            'prob_increase': 0.1,
+            'pity_cnt': 70,
+            'official_prob': 0.021,
+            'major_pity': True,
+            'refresh': True,
+            'name': 'Love and Deepspace'
         }
     }
 
