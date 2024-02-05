@@ -1,4 +1,3 @@
-import math
 from dataclasses import dataclass
 from typing import Optional
 
@@ -64,8 +63,7 @@ class GachaSystem:
         # ssr probability
         meta = self.meta
         result = meta.prob_list
-        if meta.refresh:
-            result[-1] = 1
+        result[-1] = 1
 
         # n-gacha prob
         n_up = len(meta.up_list)
@@ -104,32 +102,9 @@ class GachaSystem:
 
         return ProbTable(regular_df, major_pity_df)
 
-    def _cal_refresh_expectation(
+    def _cal_expectation(
             self
     ):
         regular_df = self.prob_table.regular_table
 
         return sum(regular_df.index * regular_df['ssr_n_gacha'])
-
-    def _cal_not_refresh_expectation(
-            self
-    ):
-        ssr = self.meta.base_prob
-        no_ssr = 1 - ssr
-        n = self.meta.pity_cnt
-        expectation = 0
-        for i in range(n + 1):
-            cur = combination(n, i) * (no_ssr ** (n - i)) * (ssr ** i)
-            if i == 0:
-                i = 1
-            expectation += i * cur
-
-        return n / expectation
-
-    def _cal_expectation(
-            self
-    ):
-        if self.meta.refresh:
-            return self._cal_refresh_expectation()
-        else:
-            return self._cal_not_refresh_expectation()
