@@ -3,7 +3,6 @@ from enum import Enum
 
 class Games(Enum):
     KLEINS = 1
-    # MILKY_WAY = 2
     NOWHERE = 3
     ARKNIGHTS = 4
     THRUD_CHARACTER = 5
@@ -33,17 +32,6 @@ def _g_sys(
             'major_pity_list': ['A', 'B'],
             'name': 'Kleins'
         },
-        # 2: {
-        #     'base_prob': 0.02,
-        #     'base_cnt': 50,
-        #     'up_percent': 0.5,
-        #     'up_list': ['A'],
-        #     'prob_increase': 0.02,
-        #     'pity_cnt': 80,
-        #     'official_prob': None,
-        #     'major_pity_list': 150,
-        #     'name': 'Milky Way'
-        # },
         3: {
             'base_prob': 0.02,
             'base_cnt': 50,
