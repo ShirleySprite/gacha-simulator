@@ -16,6 +16,7 @@ setup(
         "numpy",
         "pandas",
         "tqdm",
+        "scipy"
     ],
     python_requires='>=3.9',
 )
