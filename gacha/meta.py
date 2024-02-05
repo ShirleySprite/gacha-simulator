@@ -12,5 +12,4 @@ class GachaMeta:
     pity_cnt: int
     official_prob: Optional[float]
     major_pity_list: Optional[List]
-    refresh: bool
     name: str
